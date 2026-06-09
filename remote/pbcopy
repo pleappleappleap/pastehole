@@ -1,7 +1,14 @@
 #!/bin/sh
 # Drop-in pbcopy replacement for the remote server. Writes stdin to the
 # reverse tunnel socket forwarded back to the Mac clipboard.
-# Usage: pbcopy [mac-hostname]
+# Usage: pbcopy [-s SIZE] [mac-hostname]
+
+_limit="100m"
+if [ "${1:-}" = "-s" ]; then
+    _limit=$(printf '%s' "${2:-}" | tr 'A-Z' 'a-z')
+    [ -z "$_limit" ] && { printf 'pbcopy: -s requires a size argument\n' >&2; exit 1; }
+    shift 2
+fi
 
 _me=$(id -un)
 _sockets=$(find /tmp -maxdepth 1 -name 'pbcopy-*.sock' -user "$_me" 2>/dev/null)
@@ -39,4 +46,4 @@ else
 fi
 
 [ -S "$SOCKET" ] || { printf 'pbcopy: tunnel socket not found: %s\n' "$SOCKET" >&2; exit 1; }
-socat - UNIX-CONNECT:"$SOCKET"
+head -c "$_limit" | socat - UNIX-CONNECT:"$SOCKET"
