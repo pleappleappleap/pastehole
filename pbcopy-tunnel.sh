@@ -60,7 +60,7 @@ check_tunnel() {
 rm -f "$SOCKET"
 
 socat UNIX-LISTEN:"$SOCKET",fork,mode=0600 \
-    "EXEC:$DISPATCHER $SESSION_TOKEN $$" &
+    "EXEC:'$DISPATCHER' $SESSION_TOKEN $$" &
 SOCAT_PID=$!
 
 _socat_wait=0
