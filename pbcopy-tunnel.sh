@@ -77,6 +77,7 @@ run_host_monitor() {
             -o "ServerAliveInterval=30" \
             -o "ServerAliveCountMax=3" \
             -o "StreamLocalBindUnlink=yes" \
+            -o "StreamLocalBindMask=0177" \
             -o "ControlMaster=yes" \
             -o "ControlPath=${_mctl}" \
             -R "$SOCKET:$SOCKET" \
