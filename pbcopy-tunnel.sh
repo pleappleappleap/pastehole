@@ -55,11 +55,14 @@ rm -f "$SOCKET"
 socat UNIX-LISTEN:"$SOCKET",fork,mode=0600 EXEC:'pbcopy' &
 SOCAT_PID=$!
 
-until [ -S "$SOCKET" ]; do sleep 0.1; done
-if ! kill -0 "$SOCAT_PID" 2>/dev/null; then
-    log "socat failed to start"
-    exit 1
-fi
+_deadline=$(( $(date +%s) + 5 ))
+until [ -S "$SOCKET" ]; do
+    sleep 0.1
+    if [ "$(date +%s)" -ge "$_deadline" ]; then
+        log "socat failed to start"
+        exit 1
+    fi
+done
 
 AUTOSSH_PIDS=""
 for host in $HOSTS; do
