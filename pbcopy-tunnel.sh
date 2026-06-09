@@ -22,6 +22,10 @@ cleanup() {
     rm -f "$SOCKET"
 }
 trap cleanup EXIT INT TERM HUP
+# USR1 is a blunt instrument: it carries no payload and no source identity.
+# A delayed signal from a previous probe could satisfy a subsequent one,
+# giving a false-healthy result. Probes are sequential and the session token
+# changes on every restart, so the window is negligible in practice.
 trap '_probe_received=1' USR1
 
 if [ ! -f "$HOSTS_FILE" ]; then
