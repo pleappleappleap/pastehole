@@ -4,7 +4,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>org.ikickass.pastehole</string>
+    <string>org.pastehole</string>
     <key>ProgramArguments</key>
     <array>
         <string>@@INSTALL_PATH@@</string>
