@@ -150,7 +150,7 @@ You have active tunnels from more than one Mac. Pass the Mac's hostname:
 
 **Clipboard gets nothing / pbcopy silently fails**
 - Confirm socat is running on the Mac: `pgrep -a socat`
-- Confirm a socket exists on the remote: `ls /tmp/pbcopy-*.sock`
+- Confirm a socket exists on the remote: `ssh <host> 'ls /tmp/pbcopy-*.sock'`
 - Test the socket directly from the Mac:
   `echo test | socat - UNIX-CONNECT:/tmp/pbcopy-$(hostname -f)-*.sock`
 
