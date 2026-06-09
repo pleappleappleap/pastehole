@@ -17,7 +17,7 @@ remote$ echo foo | pbcopy
                 │
           SSH reverse tunnel  (autossh keeps this alive across disconnects)
                 │
-     ┌─ socat listener on the Mac reads from /tmp/pbcopy.sock
+     ┌─ socat listener on the Mac reads from /tmp/pbcopy-<mac-hostname>-<session>.sock
      └─ pipes to /usr/bin/pbcopy  →  macOS clipboard
 ```
 
@@ -89,7 +89,7 @@ Or install both sides in one shot:
 3. Install the launchd agent:
    ```sh
    cp io.github.pastehole.plist ~/Library/LaunchAgents/
-   launchctl load -w ~/Library/LaunchAgents/io.github.pastehole.plist
+   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/io.github.pastehole.plist
    ```
 
 ### Remote server
@@ -152,7 +152,7 @@ You have active tunnels from more than one Mac. Pass the Mac's hostname:
 - Confirm socat is running on the Mac: `pgrep -a socat`
 - Confirm a socket exists on the remote: `ls /tmp/pbcopy-*.sock`
 - Test the socket directly from the Mac:
-  `echo test | socat - UNIX-CONNECT:/tmp/pbcopy-$(hostname -s)-*.sock`
+  `echo test | socat - UNIX-CONNECT:/tmp/pbcopy-$(hostname -f)-*.sock`
 
 **Tunnel broken after wake from sleep**
 autossh will reconnect automatically within ~90 seconds
