@@ -63,6 +63,9 @@ install_remote() {
     [ -f "$SCRIPT_DIR/remote/pbcopy" ] || die "remote/pbcopy not found"
     command -v ssh >/dev/null          || die "ssh not found"
 
+    ssh "$host" 'command -v socat >/dev/null' || \
+        die "socat not found on $host — install it first (see README.md Prerequisites)"
+
     ssh "$host" 'mkdir -p ~/bin && cat > ~/bin/pbcopy && chmod 0755 ~/bin/pbcopy' \
         < "$SCRIPT_DIR/remote/pbcopy"
     info "installed ~/bin/pbcopy on $host"
