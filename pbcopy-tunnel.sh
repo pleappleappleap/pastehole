@@ -5,13 +5,13 @@
 PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin
 export PATH
 
-SOCKET=/tmp/pbcopy.sock
 HOSTS_FILE="$HOME/.config/pbcopy-tunnel/hosts"
 DISPATCHER="$HOME/bin/pbcopy-dispatch"
 PROBE_INTERVAL=60   # seconds between end-to-end tunnel probes
 PROBE_FAIL_MAX=3    # consecutive probe failures before reconnecting
 
 SESSION_TOKEN=$(openssl rand -hex 16)
+SOCKET=/tmp/pbcopy-$(hostname -s)-${SESSION_TOKEN}.sock
 
 log() { printf 'pbcopy-tunnel: %s\n' "$*" >&2; }
 
@@ -45,7 +45,7 @@ check_tunnel() {
     _probe_hex=$(printf '%s%02x' "$SESSION_TOKEN" "$_seq")
     log "[$_host] probing"
     _ack=$(ssh -o BatchMode=yes -o ConnectTimeout=5 "$_host" \
-        "printf '%s' '$_probe_hex' | xxd -r -p | pbcopy" 2>/dev/null \
+        "printf '%s' '$_probe_hex' | xxd -r -p | socat - UNIX-CONNECT:'$SOCKET'" 2>/dev/null \
         | head -c 1 | xxd -p | tr -d '\n')
     [ "$_ack" = "$(printf '%02x' "$_seq")" ]
 }
@@ -60,7 +60,7 @@ run_host_monitor() {
     trap 'kill "$_mautossh_pid" 2>/dev/null; exit 0' INT TERM HUP
 
     while true; do
-        ssh -o BatchMode=yes "$_mhost" "rm -f $SOCKET" 2>/dev/null || true
+        ssh -o BatchMode=yes "$_mhost" "rm -f '$SOCKET'" 2>/dev/null || true
 
         autossh -M 0 -N \
             -o "BatchMode=yes" \

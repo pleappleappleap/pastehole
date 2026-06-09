@@ -1,9 +1,27 @@
 #!/bin/sh
 # Drop-in pbcopy replacement for the remote server. Writes stdin to the
 # reverse tunnel socket forwarded back to the Mac clipboard.
-SOCKET=/tmp/pbcopy.sock
-if [ ! -S "$SOCKET" ]; then
-    printf 'pbcopy: tunnel socket %s not found — is the tunnel running on the Mac?\n' "$SOCKET" >&2
+# Usage: pbcopy [mac-hostname]
+
+_me=$(id -un)
+_sockets=$(find /tmp -maxdepth 1 -name 'pbcopy-*.sock' -user "$_me" 2>/dev/null)
+_count=$(printf '%s\n' "$_sockets" | grep -c '/tmp/')
+
+if [ "$_count" -eq 0 ]; then
+    printf 'pbcopy: no tunnel socket found — is pastehole running on your Mac?\n' >&2
+    exit 1
+elif [ "$_count" -eq 1 ]; then
+    SOCKET="$_sockets"
+elif [ -n "${1:-}" ]; then
+    SOCKET=$(printf '%s\n' "$_sockets" | grep "/pbcopy-${1}-[0-9a-f]*\.sock$" | head -n 1)
+    [ -S "$SOCKET" ] || { printf 'pbcopy: no tunnel socket for Mac "%s"\n' "$1" >&2; exit 1; }
+else
+    printf 'pbcopy: multiple Macs connected — specify a hostname:\n' >&2
+    printf '%s\n' "$_sockets" \
+        | sed 's|.*/pbcopy-||; s|-[0-9a-f]*\.sock$||' \
+        | while IFS= read -r _h; do printf '  pbcopy %s\n' "$_h" >&2; done
     exit 1
 fi
+
+[ -S "$SOCKET" ] || { printf 'pbcopy: tunnel socket not found: %s\n' "$SOCKET" >&2; exit 1; }
 socat - UNIX-CONNECT:"$SOCKET"

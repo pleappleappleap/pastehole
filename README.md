@@ -13,7 +13,7 @@ remote$ echo hello | pbcopy
 ```
 remote$ echo foo | pbcopy
      │
-     └─ writes to /tmp/pbcopy.sock  (Unix socket, same path on both sides)
+     └─ writes to /tmp/pbcopy-<mac-hostname>-<session>.sock
                 │
           SSH reverse tunnel  (autossh keeps this alive across disconnects)
                 │
@@ -138,24 +138,28 @@ tail -f ~/Library/Logs/pbcopy-tunnel.log
 
 ## Troubleshooting
 
-**`pbcopy: tunnel socket /tmp/pbcopy.sock not found`**
+**`pbcopy: no tunnel socket found`**
 The tunnel is down. Check the log on the Mac. Common causes:
 - autossh can't reach the remote server (network/key issue)
 - The launchd agent isn't loaded: `launchctl list io.github.pastehole`
 - `~/.config/pbcopy-tunnel/hosts` is empty or missing
 
+**`pbcopy: multiple Macs connected — specify a hostname`**
+You have active tunnels from more than one Mac. Pass the Mac's hostname:
+`echo hello | pbcopy mymac`
+
 **Clipboard gets nothing / pbcopy silently fails**
 - Confirm socat is running on the Mac: `pgrep -a socat`
-- Confirm the socket exists: `ls -la /tmp/pbcopy.sock`
+- Confirm a socket exists on the remote: `ls /tmp/pbcopy-*.sock`
 - Test the socket directly from the Mac:
-  `echo test | socat - UNIX-CONNECT:/tmp/pbcopy.sock`
+  `echo test | socat - UNIX-CONNECT:/tmp/pbcopy-$(hostname -s)-*.sock`
 
 **Tunnel broken after wake from sleep**
 autossh will reconnect automatically within ~90 seconds
 (`ServerAliveInterval=30 × ServerAliveCountMax=3`). If it doesn't recover,
 check that your SSH key is loaded: `ssh-add -l`.
 
-**Socket already exists and blocks reconnect**
+**Stale socket blocks reconnect**
 Set `StreamLocalBindUnlink yes` in `/etc/ssh/sshd_config` on the remote server
 (see above). The tunnel script also passes this as a client-side SSH option,
 which is usually sufficient.
