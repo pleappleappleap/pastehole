@@ -96,7 +96,7 @@ Or install both sides in one shot:
 
 1. Install the `pbcopy` wrapper:
    ```sh
-   install -m 0755 remote/pbcopy /usr/local/bin/pbcopy
+   mkdir -p ~/bin && install -m 0755 remote/pbcopy ~/bin/pbcopy
    ```
 
 2. Optional but recommended — add to `/etc/ssh/sshd_config`:
@@ -161,5 +161,5 @@ which is usually sufficient.
 |------|-------------|
 | `pbcopy-tunnel.sh` | `~/bin/pbcopy-tunnel` on the Mac |
 | `io.github.pastehole.plist` | `~/Library/LaunchAgents/io.github.pastehole.plist` on the Mac |
-| `remote/pbcopy` | `/usr/local/bin/pbcopy` on each remote server |
+| `remote/pbcopy` | `~/bin/pbcopy` on each remote server |
 | *(generated)* | `~/.config/pbcopy-tunnel/hosts` — one SSH host alias per line |
