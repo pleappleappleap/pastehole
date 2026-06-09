@@ -11,7 +11,8 @@ PROBE_INTERVAL=60   # seconds between end-to-end tunnel probes
 PROBE_FAIL_MAX=3    # consecutive probe failures before reconnecting
 
 SESSION_TOKEN=$(openssl rand -hex 16)
-SOCKET=/tmp/pbcopy-$(hostname -f)-${SESSION_TOKEN}.sock
+MAC_HOSTNAME=$(hostname -f)
+SOCKET=/tmp/pbcopy-${MAC_HOSTNAME}-${SESSION_TOKEN}.sock
 
 log() { printf 'pbcopy-tunnel: %s\n' "$*" >&2; }
 
@@ -44,7 +45,9 @@ check_tunnel() {
     _seq="$2"
     _probe_hex=$(printf '%s%02x' "$SESSION_TOKEN" "$_seq")
     log "[$_host] probing"
-    _ack=$(ssh -o BatchMode=yes -o ConnectTimeout=5 "$_host" \
+    _ack=$(ssh -o BatchMode=yes -o ConnectTimeout=5 \
+        -o "ControlMaster=no" -o "ControlPath=/tmp/pbcopy-ctl-${_host}" \
+        "$_host" \
         "printf '%s' '$_probe_hex' | xxd -r -p | socat - UNIX-CONNECT:'$SOCKET'" 2>/dev/null \
         | head -c 1 | xxd -p | tr -d '\n')
     [ "$_ack" = "$(printf '%02x' "$_seq")" ]
@@ -56,18 +59,23 @@ run_host_monitor() {
     _mhost="$1"
     _mseq="$2"
     _mautossh_pid=""
-    trap 'kill "$_mautossh_pid" 2>/dev/null' EXIT
-    trap 'kill "$_mautossh_pid" 2>/dev/null; exit 0' INT TERM HUP
+    _mctl="/tmp/pbcopy-ctl-${_mhost}"
+    trap 'kill "$_mautossh_pid" 2>/dev/null; rm -f "$_mctl"' EXIT
+    trap 'kill "$_mautossh_pid" 2>/dev/null; rm -f "$_mctl"; exit 0' INT TERM HUP
 
     while true; do
-        ssh -o BatchMode=yes "$_mhost" "rm -f '$SOCKET'" 2>/dev/null || true
+        rm -f "$_mctl"
+        ssh -o BatchMode=yes "$_mhost" "find /tmp -maxdepth 1 -name 'pbcopy-${MAC_HOSTNAME}-*.sock' -delete 2>/dev/null; true" 2>/dev/null || true
 
-        autossh -M 0 -N \
+        autossh -M 0 -- \
+            -N \
             -o "BatchMode=yes" \
             -o "ExitOnForwardFailure=yes" \
             -o "ServerAliveInterval=30" \
             -o "ServerAliveCountMax=3" \
             -o "StreamLocalBindUnlink=yes" \
+            -o "ControlMaster=yes" \
+            -o "ControlPath=${_mctl}" \
             -R "$SOCKET:$SOCKET" \
             "$_mhost" &
         _mautossh_pid=$!

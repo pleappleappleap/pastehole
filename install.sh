@@ -20,6 +20,7 @@ reload_agent() {
         launchctl unload "$PLIST_DEST" 2>/dev/null || true
     fi
     launchctl load -w "$PLIST_DEST"
+    launchctl kickstart -k "gui/$(id -u)/$PLIST_NAME"
 }
 
 install_local() {
