@@ -4,7 +4,7 @@
 # Probe: echoes the sequence byte back as ACK; real data passes through to pbcopy.
 SESSION_TOKEN="$1"   # 16 random bytes as 32 hex chars
 
-prefix=$(head -c 17 | xxd -p | tr -d '\n')
+prefix=$(dd bs=1 count=17 2>/dev/null | xxd -p | tr -d '\n')
 token="${prefix%??}"
 if [ "$token" = "$SESSION_TOKEN" ]; then
     printf '%s' "${prefix#"$SESSION_TOKEN"}" | xxd -r -p
