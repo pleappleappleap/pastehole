@@ -35,9 +35,12 @@ install_local() {
     info "installed $HOME/bin/pbcopy-tunnel"
 
     mkdir -p "$HOME/Library/LaunchAgents"
+    _tmp=$(mktemp "$HOME/Library/LaunchAgents/.pbcopy-tunnel.plist.XXXXXX")
     sed -e "s|@@INSTALL_PATH@@|$HOME/bin/pbcopy-tunnel|" \
         -e "s|~/|$HOME/|g" \
-        "$SCRIPT_DIR/$PLIST_SRC" > "$PLIST_DEST"
+        "$SCRIPT_DIR/$PLIST_SRC" > "$_tmp" && mv "$_tmp" "$PLIST_DEST" || {
+        rm -f "$_tmp"; die "failed to write plist"
+    }
     info "installed $PLIST_DEST"
 
     mkdir -p "$(dirname "$HOSTS_FILE")"
