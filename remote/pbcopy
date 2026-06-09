@@ -1,0 +1,9 @@
+#!/bin/sh
+# Drop-in pbcopy replacement for the remote server. Writes stdin to the
+# reverse tunnel socket forwarded back to the Mac clipboard.
+SOCKET=/tmp/pbcopy.sock
+if [ ! -S "$SOCKET" ]; then
+    printf 'pbcopy: tunnel socket %s not found — is the tunnel running on the Mac?\n' "$SOCKET" >&2
+    exit 1
+fi
+socat - UNIX-CONNECT:"$SOCKET"
