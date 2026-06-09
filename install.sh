@@ -10,7 +10,6 @@ PLIST_NAME=io.github.pastehole
 PLIST_SRC=io.github.pastehole.plist
 PLIST_DEST="$HOME/Library/LaunchAgents/$PLIST_NAME.plist"
 HOSTS_FILE="$HOME/.config/pbcopy-tunnel/hosts"
-LOG_DIR=/usr/local/var/log
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 die()  { echo "error: $*" >&2; exit 1; }
@@ -31,12 +30,13 @@ install_local() {
     command -v autossh >/dev/null          || die "autossh not found — brew install autossh"
     command -v socat   >/dev/null          || die "socat not found — brew install socat"
 
-    mkdir -p "$LOG_DIR"
-    install -m 0755 "$SCRIPT_DIR/pbcopy-tunnel.sh" /usr/local/bin/pbcopy-tunnel
-    info "installed /usr/local/bin/pbcopy-tunnel"
+    mkdir -p "$HOME/Library/Logs" "$HOME/bin"
+    install -m 0755 "$SCRIPT_DIR/pbcopy-tunnel.sh" "$HOME/bin/pbcopy-tunnel"
+    info "installed $HOME/bin/pbcopy-tunnel"
 
     mkdir -p "$HOME/Library/LaunchAgents"
-    cp "$SCRIPT_DIR/$PLIST_SRC" "$PLIST_DEST"
+    sed "s|@@INSTALL_PATH@@|$HOME/bin/pbcopy-tunnel|" \
+        "$SCRIPT_DIR/$PLIST_SRC" > "$PLIST_DEST"
     info "installed $PLIST_DEST"
 
     mkdir -p "$(dirname "$HOSTS_FILE")"

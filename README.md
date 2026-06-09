@@ -75,8 +75,8 @@ Or install both sides in one shot:
 
 1. Install the tunnel script:
    ```sh
-   install -m 0755 pbcopy-tunnel.sh /usr/local/bin/pbcopy-tunnel
-   mkdir -p /usr/local/var/log
+   mkdir -p ~/bin ~/Library/Logs
+   install -m 0755 pbcopy-tunnel.sh ~/bin/pbcopy-tunnel
    ```
 
 2. Create the hosts file and add your servers:
@@ -128,7 +128,7 @@ launchctl kickstart -k gui/$(id -u)/io.github.pastehole
 ## Logs
 
 ```sh
-tail -f /usr/local/var/log/pbcopy-tunnel.log
+tail -f ~/Library/Logs/pbcopy-tunnel.log
 ```
 
 ## Troubleshooting
@@ -159,7 +159,7 @@ which is usually sufficient.
 
 | File | Destination |
 |------|-------------|
-| `pbcopy-tunnel.sh` | `/usr/local/bin/pbcopy-tunnel` on the Mac |
+| `pbcopy-tunnel.sh` | `~/bin/pbcopy-tunnel` on the Mac |
 | `io.github.pastehole.plist` | `~/Library/LaunchAgents/io.github.pastehole.plist` on the Mac |
 | `remote/pbcopy` | `/usr/local/bin/pbcopy` on each remote server |
 | *(generated)* | `~/.config/pbcopy-tunnel/hosts` — one SSH host alias per line |

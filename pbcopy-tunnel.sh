@@ -43,6 +43,7 @@ fi
 AUTOSSH_PIDS=""
 for host in $HOSTS; do
     autossh -M 0 -N \
+        -o "BatchMode=yes" \
         -o "ExitOnForwardFailure=yes" \
         -o "ServerAliveInterval=30" \
         -o "ServerAliveCountMax=3" \
