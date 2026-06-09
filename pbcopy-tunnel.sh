@@ -67,6 +67,9 @@ run_host_monitor() {
         rm -f "$_mctl"
         ssh -o BatchMode=yes "$_mhost" "find /tmp -maxdepth 1 -name 'pbcopy-${MAC_HOSTNAME}-*.sock' -delete 2>/dev/null; true" 2>/dev/null || true
 
+        # Race: SIGTERM between the & and $! assignment below orphans autossh.
+        # Window is one interpreter step wide; autossh self-terminates when its
+        # keepalive detects the gone socket. Not worth defending against.
         autossh -M 0 -- \
             -N \
             -o "BatchMode=yes" \
@@ -135,7 +138,7 @@ run_host_monitor() {
 rm -f "$SOCKET"
 
 socat UNIX-LISTEN:"$SOCKET",fork,mode=0600 \
-    "EXEC:'$DISPATCHER' $SESSION_TOKEN" &
+    "EXEC:$DISPATCHER $SESSION_TOKEN" &
 SOCAT_PID=$!
 
 _socat_wait=0

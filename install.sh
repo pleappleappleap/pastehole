@@ -16,11 +16,8 @@ die()  { echo "error: $*" >&2; exit 1; }
 info() { echo "  $*"; }
 
 reload_agent() {
-    if launchctl list "$PLIST_NAME" >/dev/null 2>&1; then
-        launchctl unload "$PLIST_DEST" 2>/dev/null || true
-    fi
-    launchctl load -w "$PLIST_DEST"
-    launchctl kickstart -k "gui/$(id -u)/$PLIST_NAME"
+    launchctl bootout "gui/$(id -u)/$PLIST_NAME" 2>/dev/null || true
+    launchctl bootstrap "gui/$(id -u)" "$PLIST_DEST"
 }
 
 install_local() {

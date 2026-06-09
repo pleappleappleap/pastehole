@@ -121,13 +121,13 @@ Or install both sides in one shot:
 ./install.sh remote newserver
 # or manually:
 echo "newserver" >> ~/.config/pbcopy-tunnel/hosts
-launchctl kickstart -k gui/$(id -u)/io.github.pastehole
+launchctl bootout gui/$(id -u)/io.github.pastehole && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/io.github.pastehole.plist
 ```
 
 **Remove a server:**
 Edit `~/.config/pbcopy-tunnel/hosts`, remove the line, then reload:
 ```sh
-launchctl kickstart -k gui/$(id -u)/io.github.pastehole
+launchctl bootout gui/$(id -u)/io.github.pastehole && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/io.github.pastehole.plist
 ```
 
 ## Logs
@@ -163,6 +163,15 @@ check that your SSH key is loaded: `ssh-add -l`.
 Set `StreamLocalBindUnlink yes` in `/etc/ssh/sshd_config` on the remote server
 (see above). The tunnel script also passes this as a client-side SSH option,
 which is usually sufficient.
+
+**Stale socket after Mac hostname change**
+If your Mac's FQDN changes between runs (e.g. a VPN that alters the domain
+suffix), the old socket may linger in `/tmp` on the remote and trigger the
+"multiple Macs connected" error even though only one Mac is active. Fix:
+```sh
+rm /tmp/pbcopy-*.sock
+```
+Then wait for the tunnel to reconnect (up to ~90 seconds).
 
 ## Files
 
