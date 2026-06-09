@@ -42,6 +42,7 @@ fi
 
 AUTOSSH_PIDS=""
 for host in $HOSTS; do
+    ssh -o BatchMode=yes "$host" "rm -f $SOCKET" 2>/dev/null || true
     autossh -M 0 -N \
         -o "BatchMode=yes" \
         -o "ExitOnForwardFailure=yes" \
