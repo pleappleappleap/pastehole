@@ -35,7 +35,8 @@ install_local() {
     info "installed $HOME/bin/pbcopy-tunnel"
 
     mkdir -p "$HOME/Library/LaunchAgents"
-    sed "s|@@INSTALL_PATH@@|$HOME/bin/pbcopy-tunnel|" \
+    sed -e "s|@@INSTALL_PATH@@|$HOME/bin/pbcopy-tunnel|" \
+        -e "s|~/|$HOME/|g" \
         "$SCRIPT_DIR/$PLIST_SRC" > "$PLIST_DEST"
     info "installed $PLIST_DEST"
 
