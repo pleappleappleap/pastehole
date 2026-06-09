@@ -9,24 +9,22 @@ SOCKET=/tmp/pbcopy.sock
 HOSTS_FILE="$HOME/.config/pbcopy-tunnel/hosts"
 DISPATCHER="$HOME/bin/pbcopy-dispatch"
 PROBE_INTERVAL=60   # seconds between end-to-end tunnel probes
-PROBE_FAIL_MAX=3    # consecutive probe failures before restarting
+PROBE_FAIL_MAX=3    # consecutive probe failures before reconnecting
 
 SESSION_TOKEN=$(openssl rand -hex 16)
 
 log() { printf 'pbcopy-tunnel: %s\n' "$*" >&2; }
 
+_cleaned=0
 cleanup() {
+    [ "$_cleaned" -eq 1 ] && return
+    _cleaned=1
     log "shutting down"
-    for pid in $AUTOSSH_PIDS; do kill "$pid" 2>/dev/null; done
+    for pid in $MONITOR_PIDS; do kill "$pid" 2>/dev/null; done
     kill "$SOCAT_PID" 2>/dev/null
     rm -f "$SOCKET"
 }
 trap cleanup EXIT INT TERM HUP
-# USR1 is a blunt instrument: it carries no payload and no source identity.
-# A delayed signal from a previous probe could satisfy a subsequent one,
-# giving a false-healthy result. Probes are sequential and the session token
-# changes on every restart, so the window is negligible in practice.
-trap '_probe_received=1' USR1
 
 if [ ! -f "$HOSTS_FILE" ]; then
     log "hosts file not found: $HOSTS_FILE"
@@ -39,32 +37,97 @@ if [ -z "$HOSTS" ]; then
     exit 1
 fi
 
-# Send the session token through the tunnel; the dispatcher signals back on
-# receipt. Probe traffic never reaches pbcopy — the clipboard is untouched.
+# Send session token + host sequence byte through the tunnel.
+# The dispatcher echoes the sequence byte back as the ACK.
 check_tunnel() {
     _host="$1"
-    _probe_received=0
-    log "probing $_host"
-    ssh -o BatchMode=yes -o ConnectTimeout=5 "$_host" \
-        "printf '%s' '$SESSION_TOKEN' | xxd -r -p | pbcopy" 2>/dev/null || {
-        log "probe to $_host: SSH failed"
-        return 1
-    }
-    _probe_wait=0
-    while [ "$_probe_received" -eq 0 ] && [ "$_probe_wait" -lt 50 ]; do
-        sleep 0.1
-        _probe_wait=$((_probe_wait + 1))
+    _seq="$2"
+    _probe_hex=$(printf '%s%02x' "$SESSION_TOKEN" "$_seq")
+    log "[$_host] probing"
+    _ack=$(ssh -o BatchMode=yes -o ConnectTimeout=5 "$_host" \
+        "printf '%s' '$_probe_hex' | xxd -r -p | pbcopy" 2>/dev/null \
+        | head -c 1 | xxd -p | tr -d '\n')
+    [ "$_ack" = "$(printf '%02x' "$_seq")" ]
+}
+
+# Per-host monitor: manages autossh and periodic probes for one host.
+# Reconnects automatically on tunnel failure — never exits in normal operation.
+run_host_monitor() {
+    _mhost="$1"
+    _mseq="$2"
+    _mautossh_pid=""
+    trap 'kill "$_mautossh_pid" 2>/dev/null' EXIT
+    trap 'kill "$_mautossh_pid" 2>/dev/null; exit 0' INT TERM HUP
+
+    while true; do
+        ssh -o BatchMode=yes "$_mhost" "rm -f $SOCKET" 2>/dev/null || true
+
+        autossh -M 0 -N \
+            -o "BatchMode=yes" \
+            -o "ExitOnForwardFailure=yes" \
+            -o "ServerAliveInterval=30" \
+            -o "ServerAliveCountMax=3" \
+            -o "StreamLocalBindUnlink=yes" \
+            -R "$SOCKET:$SOCKET" \
+            "$_mhost" &
+        _mautossh_pid=$!
+        log "[$_mhost] started autossh (PID $_mautossh_pid)"
+
+        _mattempts=0
+        _mup=0
+        while [ "$_mattempts" -lt 15 ]; do
+            if check_tunnel "$_mhost" "$_mseq"; then
+                _mup=1
+                break
+            fi
+            _mattempts=$((_mattempts + 1))
+            sleep 2
+        done
+
+        if [ "$_mup" -eq 0 ]; then
+            log "[$_mhost] tunnel failed to come up, will retry"
+            kill "$_mautossh_pid" 2>/dev/null
+            sleep 30
+            continue
+        fi
+
+        log "[$_mhost] tunnel established"
+
+        _mlast_probe=$(date +%s)
+        _mprobe_failures=0
+        while true; do
+            kill -0 "$_mautossh_pid" 2>/dev/null || {
+                log "[$_mhost] autossh exited, reconnecting"
+                break
+            }
+
+            _mnow=$(date +%s)
+            if [ $((_mnow - _mlast_probe)) -ge "$PROBE_INTERVAL" ]; then
+                if check_tunnel "$_mhost" "$_mseq"; then
+                    _mprobe_failures=0
+                else
+                    _mprobe_failures=$((_mprobe_failures + 1))
+                    log "[$_mhost] probe failed ($_mprobe_failures/$PROBE_FAIL_MAX)"
+                    if [ "$_mprobe_failures" -ge "$PROBE_FAIL_MAX" ]; then
+                        log "[$_mhost] too many probe failures, reconnecting"
+                        break
+                    fi
+                fi
+                _mlast_probe=$_mnow
+            fi
+
+            sleep 5
+        done
+
+        kill "$_mautossh_pid" 2>/dev/null
+        sleep 5
     done
-    if [ "$_probe_received" -eq 0 ]; then
-        log "probe to $_host: no response"
-        return 1
-    fi
 }
 
 rm -f "$SOCKET"
 
 socat UNIX-LISTEN:"$SOCKET",fork,mode=0600 \
-    "EXEC:'$DISPATCHER' $SESSION_TOKEN $$" &
+    "EXEC:'$DISPATCHER' $SESSION_TOKEN" &
 SOCAT_PID=$!
 
 _socat_wait=0
@@ -77,64 +140,21 @@ until [ -S "$SOCKET" ]; do
     fi
 done
 
-AUTOSSH_PIDS=""
+MONITOR_PIDS=""
+_seq=0
 for host in $HOSTS; do
-    ssh -o BatchMode=yes "$host" "rm -f $SOCKET" 2>/dev/null || true
-    autossh -M 0 -N \
-        -o "BatchMode=yes" \
-        -o "ExitOnForwardFailure=yes" \
-        -o "ServerAliveInterval=30" \
-        -o "ServerAliveCountMax=3" \
-        -o "StreamLocalBindUnlink=yes" \
-        -R "$SOCKET:$SOCKET" \
-        "$host" &
-    pid=$!
-    AUTOSSH_PIDS="$AUTOSSH_PIDS $pid"
-    log "started autossh to $host (PID $pid)"
+    (run_host_monitor "$host" "$_seq") &
+    MONITOR_PIDS="$MONITOR_PIDS $!"
+    log "started monitor for $host (seq $_seq)"
+    _seq=$((_seq + 1))
 done
 
-log "waiting for tunnels"
-for host in $HOSTS; do
-    _startup_attempts=0
-    while ! check_tunnel "$host"; do
-        _startup_attempts=$((_startup_attempts + 1))
-        if [ "$_startup_attempts" -ge 15 ]; then
-            log "tunnel to $host failed to come up"
-            exit 1
-        fi
-        sleep 2
-    done
-    log "tunnel to $host established"
-done
+log "monitors started"
 
-log "tunnels up"
-
-_last_probe=$(date +%s)
-_probe_failures=0
 while true; do
     kill -0 "$SOCAT_PID" 2>/dev/null || { log "socat exited unexpectedly"; exit 1; }
-    for pid in $AUTOSSH_PIDS; do
-        kill -0 "$pid" 2>/dev/null || { log "autossh $pid exited unexpectedly"; exit 1; }
+    for pid in $MONITOR_PIDS; do
+        kill -0 "$pid" 2>/dev/null || { log "a host monitor exited unexpectedly"; exit 1; }
     done
-
-    _now=$(date +%s)
-    if [ $((_now - _last_probe)) -ge $PROBE_INTERVAL ]; then
-        _probe_ok=1
-        for host in $HOSTS; do
-            check_tunnel "$host" || { _probe_ok=0; break; }
-        done
-        if [ "$_probe_ok" -eq 1 ]; then
-            _probe_failures=0
-        else
-            _probe_failures=$((_probe_failures + 1))
-            log "probe failed ($_probe_failures/$PROBE_FAIL_MAX)"
-            if [ "$_probe_failures" -ge "$PROBE_FAIL_MAX" ]; then
-                log "too many consecutive probe failures, restarting"
-                exit 1
-            fi
-        fi
-        _last_probe=$_now
-    fi
-
     sleep 5
 done
