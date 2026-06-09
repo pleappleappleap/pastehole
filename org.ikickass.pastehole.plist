@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
     "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Change the Label and filename to match your own reverse-DNS domain. -->
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>io.github.pastehole</string>
+    <string>org.ikickass.pastehole</string>
     <key>ProgramArguments</key>
     <array>
         <string>@@INSTALL_PATH@@</string>

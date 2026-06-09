@@ -88,8 +88,8 @@ Or install both sides in one shot:
 
 3. Install the launchd agent:
    ```sh
-   cp io.github.pastehole.plist ~/Library/LaunchAgents/
-   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/io.github.pastehole.plist
+   cp org.ikickass.pastehole.plist ~/Library/LaunchAgents/
+   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/org.ikickass.pastehole.plist
    ```
 
 ### Remote server
@@ -121,13 +121,13 @@ Or install both sides in one shot:
 ./install.sh remote newserver
 # or manually:
 echo "newserver" >> ~/.config/pbcopy-tunnel/hosts
-launchctl bootout gui/$(id -u)/io.github.pastehole && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/io.github.pastehole.plist
+launchctl bootout gui/$(id -u)/org.ikickass.pastehole && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/org.ikickass.pastehole.plist
 ```
 
 **Remove a server:**
 Edit `~/.config/pbcopy-tunnel/hosts`, remove the line, then reload:
 ```sh
-launchctl bootout gui/$(id -u)/io.github.pastehole && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/io.github.pastehole.plist
+launchctl bootout gui/$(id -u)/org.ikickass.pastehole && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/org.ikickass.pastehole.plist
 ```
 
 ## Logs
@@ -141,7 +141,7 @@ tail -f ~/Library/Logs/pbcopy-tunnel.log
 **`pbcopy: no tunnel socket found`**
 The tunnel is down. Check the log on the Mac. Common causes:
 - autossh can't reach the remote server (network/key issue)
-- The launchd agent isn't loaded: `launchctl list io.github.pastehole`
+- The launchd agent isn't loaded: `launchctl list org.ikickass.pastehole`
 - `~/.config/pbcopy-tunnel/hosts` is empty or missing
 
 **`pbcopy: multiple Macs connected — specify a hostname`**
@@ -179,6 +179,6 @@ Then wait for the tunnel to reconnect (up to ~90 seconds).
 |------|-------------|
 | `pbcopy-tunnel.sh` | `~/bin/pbcopy-tunnel` on the Mac |
 | `pbcopy-dispatch` | `~/bin/pbcopy-dispatch` on the Mac |
-| `io.github.pastehole.plist` | `~/Library/LaunchAgents/io.github.pastehole.plist` on the Mac |
+| `org.ikickass.pastehole.plist` | `~/Library/LaunchAgents/org.ikickass.pastehole.plist` on the Mac |
 | `remote/pbcopy` | `~/bin/pbcopy` on each remote server |
 | *(generated)* | `~/.config/pbcopy-tunnel/hosts` — one SSH host alias per line |

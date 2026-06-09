@@ -6,8 +6,8 @@
 #   ./install.sh both   <ssh-host>   — both sides
 set -e
 
-PLIST_NAME=io.github.pastehole
-PLIST_SRC=io.github.pastehole.plist
+PLIST_NAME=org.ikickass.pastehole
+PLIST_SRC=org.ikickass.pastehole.plist
 PLIST_DEST="$HOME/Library/LaunchAgents/$PLIST_NAME.plist"
 HOSTS_FILE="$HOME/.config/pbcopy-tunnel/hosts"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
