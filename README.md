@@ -98,6 +98,11 @@ Or install both sides in one shot:
    ```sh
    mkdir -p ~/bin && install -m 0755 remote/pbcopy ~/bin/pbcopy
    ```
+   Ensure `~/bin` is in your `PATH`. If it isn't, add this to `~/.profile`
+   (or `~/.shrc` on FreeBSD):
+   ```sh
+   export PATH="$HOME/bin:$PATH"
+   ```
 
 2. Optional but recommended — add to `/etc/ssh/sshd_config`:
    ```
