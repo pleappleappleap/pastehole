@@ -7,6 +7,7 @@ export PATH
 
 SOCKET=/tmp/pbcopy.sock
 HOSTS_FILE="$HOME/.config/pbcopy-tunnel/hosts"
+PROBE_INTERVAL=60   # seconds between end-to-end tunnel probes
 
 log() { printf 'pbcopy-tunnel: %s\n' "$*" >&2; }
 
@@ -29,12 +30,32 @@ if [ -z "$HOSTS" ]; then
     exit 1
 fi
 
+# Send a UUID from the remote through the tunnel and verify it arrives in the
+# local clipboard. This exercises the full path: SSH, reverse tunnel, socat,
+# pbcopy. Writes to the clipboard briefly; the user's next copy overwrites it.
+check_tunnel() {
+    _host="$1"
+    _token=$(uuidgen)
+    log "probing $_host"
+    ssh -o BatchMode=yes -o ConnectTimeout=5 "$_host" \
+        "printf '%s' '$_token' | pbcopy" 2>/dev/null || {
+        log "probe to $_host: SSH failed"
+        return 1
+    }
+    sleep 1
+    _got=$(pbpaste 2>/dev/null)
+    if [ "$_got" != "$_token" ]; then
+        log "probe to $_host: expected $_token, got $_got"
+        return 1
+    fi
+}
+
 rm -f "$SOCKET"
 
 socat UNIX-LISTEN:"$SOCKET",fork,mode=0600 EXEC:'pbcopy' &
 SOCAT_PID=$!
 
-sleep 1
+until [ -S "$SOCKET" ]; do sleep 0.1; done
 if ! kill -0 "$SOCAT_PID" 2>/dev/null; then
     log "socat failed to start"
     exit 1
@@ -64,10 +85,20 @@ done
 
 log "tunnels up"
 
+_last_probe=0
 while true; do
     kill -0 "$SOCAT_PID" 2>/dev/null || { log "socat exited unexpectedly"; exit 1; }
     for pid in $AUTOSSH_PIDS; do
         kill -0 "$pid" 2>/dev/null || { log "autossh $pid exited unexpectedly"; exit 1; }
     done
+
+    _now=$(date +%s)
+    if [ $((_now - _last_probe)) -ge $PROBE_INTERVAL ]; then
+        for host in $HOSTS; do
+            check_tunnel "$host" || exit 1
+        done
+        _last_probe=$_now
+    fi
+
     sleep 5
 done
