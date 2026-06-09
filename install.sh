@@ -62,10 +62,9 @@ install_remote() {
 
     [ -f "$SCRIPT_DIR/remote/pbcopy" ] || die "remote/pbcopy not found"
     command -v ssh >/dev/null          || die "ssh not found"
-    command -v scp >/dev/null          || die "scp not found"
 
-    scp -q "$SCRIPT_DIR/remote/pbcopy" "$host:/tmp/pbcopy-wrapper"
-    ssh "$host" 'mkdir -p ~/bin && install -m 0755 /tmp/pbcopy-wrapper ~/bin/pbcopy && rm /tmp/pbcopy-wrapper'
+    ssh "$host" 'mkdir -p ~/bin && cat > ~/bin/pbcopy && chmod 0755 ~/bin/pbcopy' \
+        < "$SCRIPT_DIR/remote/pbcopy"
     info "installed ~/bin/pbcopy on $host"
 
     mkdir -p "$(dirname "$HOSTS_FILE")"
