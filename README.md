@@ -88,7 +88,8 @@ Or install both sides in one shot:
 
 3. Install the launchd agent:
    ```sh
-   cp org.pastehole.plist ~/Library/LaunchAgents/
+   sed -e "s|@@INSTALL_PATH@@|$HOME/bin/pbcopy-tunnel|" -e "s|@@HOME@@|$HOME|g" \
+       org.pastehole.plist > ~/Library/LaunchAgents/org.pastehole.plist
    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/org.pastehole.plist
    ```
 
