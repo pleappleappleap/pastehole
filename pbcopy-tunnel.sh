@@ -8,6 +8,7 @@ export PATH
 SOCKET=/tmp/pbcopy.sock
 HOSTS_FILE="$HOME/.config/pbcopy-tunnel/hosts"
 PROBE_INTERVAL=60   # seconds between end-to-end tunnel probes
+PROBE_FAIL_MAX=3    # consecutive probe failures before restarting
 
 log() { printf 'pbcopy-tunnel: %s\n' "$*" >&2; }
 
@@ -89,6 +90,7 @@ done
 log "tunnels up"
 
 _last_probe=0
+_probe_failures=0
 while true; do
     kill -0 "$SOCAT_PID" 2>/dev/null || { log "socat exited unexpectedly"; exit 1; }
     for pid in $AUTOSSH_PIDS; do
@@ -97,9 +99,20 @@ while true; do
 
     _now=$(date +%s)
     if [ $((_now - _last_probe)) -ge $PROBE_INTERVAL ]; then
+        _probe_ok=1
         for host in $HOSTS; do
-            check_tunnel "$host" || exit 1
+            check_tunnel "$host" || { _probe_ok=0; break; }
         done
+        if [ "$_probe_ok" -eq 1 ]; then
+            _probe_failures=0
+        else
+            _probe_failures=$((_probe_failures + 1))
+            log "probe failed ($_probe_failures/$PROBE_FAIL_MAX)"
+            if [ "$_probe_failures" -ge "$PROBE_FAIL_MAX" ]; then
+                log "too many consecutive probe failures, restarting"
+                exit 1
+            fi
+        fi
         _last_probe=$_now
     fi
 
