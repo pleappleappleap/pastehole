@@ -51,7 +51,7 @@ key-based (passwordless) auth.
 ## Quick install
 
 ```sh
-git clone https://github.com/your-username/pastehole && cd pastehole
+git clone https://github.com/pleappleappleap/pastehole && cd pastehole
 
 # Install the Mac side once
 ./install.sh local
