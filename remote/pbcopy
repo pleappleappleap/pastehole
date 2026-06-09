@@ -13,8 +13,23 @@ if [ "$_count" -eq 0 ]; then
 elif [ "$_count" -eq 1 ]; then
     SOCKET="$_sockets"
 elif [ -n "${1:-}" ]; then
-    SOCKET=$(printf '%s\n' "$_sockets" | grep "/pbcopy-${1}-[0-9a-f]*\.sock$" | head -n 1)
-    [ -S "$SOCKET" ] || { printf 'pbcopy: no tunnel socket for Mac "%s"\n' "$1" >&2; exit 1; }
+    # Escape dots in the given name, then match either:
+    #   exact hostname:  pbcopy-NAME-HEXTOKEN.sock
+    #   leftmost label:  pbcopy-NAME.domain-HEXTOKEN.sock
+    _pat=$(printf '%s' "$1" | sed 's/\./\\./g')
+    _match=$(printf '%s\n' "$_sockets" \
+        | grep -E "/pbcopy-${_pat}(-[0-9a-f]{32}\.sock|\..*-[0-9a-f]{32}\.sock)$")
+    _nmatches=$(printf '%s\n' "$_match" | grep -c '/tmp/')
+    if [ "$_nmatches" -eq 0 ]; then
+        printf 'pbcopy: no tunnel socket for Mac "%s"\n' "$1" >&2; exit 1
+    elif [ "$_nmatches" -gt 1 ]; then
+        printf 'pbcopy: "%s" is ambiguous — be more specific:\n' "$1" >&2
+        printf '%s\n' "$_match" \
+            | sed 's|.*/pbcopy-||; s|-[0-9a-f]*\.sock$||' \
+            | while IFS= read -r _h; do printf '  pbcopy %s\n' "$_h" >&2; done
+        exit 1
+    fi
+    SOCKET="$_match"
 else
     printf 'pbcopy: multiple Macs connected — specify a hostname:\n' >&2
     printf '%s\n' "$_sockets" \

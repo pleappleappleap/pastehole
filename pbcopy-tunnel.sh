@@ -11,7 +11,7 @@ PROBE_INTERVAL=60   # seconds between end-to-end tunnel probes
 PROBE_FAIL_MAX=3    # consecutive probe failures before reconnecting
 
 SESSION_TOKEN=$(openssl rand -hex 16)
-SOCKET=/tmp/pbcopy-$(hostname -s)-${SESSION_TOKEN}.sock
+SOCKET=/tmp/pbcopy-$(hostname -f)-${SESSION_TOKEN}.sock
 
 log() { printf 'pbcopy-tunnel: %s\n' "$*" >&2; }
 
