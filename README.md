@@ -36,13 +36,13 @@ brew install autossh socat
 **Remote server**
 ```sh
 # Debian/Ubuntu
-sudo apt install socat
+sudo apt install socat xxd
 
 # FreeBSD
-pkg install socat
+pkg install socat vim-lite   # xxd is bundled with vim-lite
 
 # RHEL/CentOS
-sudo yum install socat
+sudo yum install socat vim-common   # xxd is in vim-common
 ```
 
 Each remote server must be configured as a host alias in `~/.ssh/config` with
@@ -165,6 +165,7 @@ which is usually sufficient.
 | File | Destination |
 |------|-------------|
 | `pbcopy-tunnel.sh` | `~/bin/pbcopy-tunnel` on the Mac |
+| `pbcopy-dispatch` | `~/bin/pbcopy-dispatch` on the Mac |
 | `io.github.pastehole.plist` | `~/Library/LaunchAgents/io.github.pastehole.plist` on the Mac |
 | `remote/pbcopy` | `~/bin/pbcopy` on each remote server |
 | *(generated)* | `~/.config/pbcopy-tunnel/hosts` — one SSH host alias per line |

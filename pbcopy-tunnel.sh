@@ -11,7 +11,7 @@ DISPATCHER="$HOME/bin/pbcopy-dispatch"
 PROBE_INTERVAL=60   # seconds between end-to-end tunnel probes
 PROBE_FAIL_MAX=3    # consecutive probe failures before restarting
 
-SESSION_TOKEN=$(uuidgen)
+SESSION_TOKEN=$(openssl rand -hex 16)
 
 log() { printf 'pbcopy-tunnel: %s\n' "$*" >&2; }
 
@@ -42,7 +42,7 @@ check_tunnel() {
     _probe_received=0
     log "probing $_host"
     ssh -o BatchMode=yes -o ConnectTimeout=5 "$_host" \
-        "printf '%s' '$SESSION_TOKEN' | pbcopy" 2>/dev/null || {
+        "printf '%s' '$SESSION_TOKEN' | xxd -r -p | pbcopy" 2>/dev/null || {
         log "probe to $_host: SSH failed"
         return 1
     }
