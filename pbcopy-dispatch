@@ -1,0 +1,13 @@
+#!/bin/sh
+# Mac-side tunnel dispatcher. Invoked by socat for each incoming connection.
+# If stdin matches the session token it signals the monitor (probe traffic).
+# Otherwise it passes stdin to pbcopy unchanged (real clipboard traffic).
+SESSION_TOKEN="$1"
+MONITOR_PID="$2"
+data=$(cat; printf x)
+data="${data%x}"
+if [ "$data" = "$SESSION_TOKEN" ]; then
+    kill -USR1 "$MONITOR_PID"
+else
+    printf '%s' "$data" | pbcopy
+fi

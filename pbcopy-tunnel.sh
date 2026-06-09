@@ -1,5 +1,5 @@
 #!/bin/sh
-# Runs on the Mac under launchd. Starts a socat listener on $SOCKET and one
+# Runs on the Mac under launchd. Starts a dispatcher on $SOCKET and one
 # autossh reverse tunnel per server listed in $HOSTS_FILE.
 
 PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin
@@ -7,8 +7,11 @@ export PATH
 
 SOCKET=/tmp/pbcopy.sock
 HOSTS_FILE="$HOME/.config/pbcopy-tunnel/hosts"
+DISPATCHER="$HOME/bin/pbcopy-dispatch"
 PROBE_INTERVAL=60   # seconds between end-to-end tunnel probes
 PROBE_FAIL_MAX=3    # consecutive probe failures before restarting
+
+SESSION_TOKEN=$(uuidgen)
 
 log() { printf 'pbcopy-tunnel: %s\n' "$*" >&2; }
 
@@ -19,6 +22,7 @@ cleanup() {
     rm -f "$SOCKET"
 }
 trap cleanup EXIT INT TERM HUP
+trap '_probe_received=1' USR1
 
 if [ ! -f "$HOSTS_FILE" ]; then
     log "hosts file not found: $HOSTS_FILE"
@@ -31,35 +35,39 @@ if [ -z "$HOSTS" ]; then
     exit 1
 fi
 
-# Send a UUID from the remote through the tunnel and verify it arrives in the
-# local clipboard. This exercises the full path: SSH, reverse tunnel, socat,
-# pbcopy. Writes to the clipboard briefly; the user's next copy overwrites it.
+# Send the session token through the tunnel; the dispatcher signals back on
+# receipt. Probe traffic never reaches pbcopy — the clipboard is untouched.
 check_tunnel() {
     _host="$1"
-    _token=$(uuidgen)
+    _probe_received=0
     log "probing $_host"
     ssh -o BatchMode=yes -o ConnectTimeout=5 "$_host" \
-        "printf '%s' '$_token' | pbcopy" 2>/dev/null || {
+        "printf '%s' '$SESSION_TOKEN' | pbcopy" 2>/dev/null || {
         log "probe to $_host: SSH failed"
         return 1
     }
-    sleep 1
-    _got=$(pbpaste 2>/dev/null)
-    if [ "$_got" != "$_token" ]; then
-        log "probe to $_host: expected $_token, got $_got"
+    _probe_wait=0
+    while [ "$_probe_received" -eq 0 ] && [ "$_probe_wait" -lt 50 ]; do
+        sleep 0.1
+        _probe_wait=$((_probe_wait + 1))
+    done
+    if [ "$_probe_received" -eq 0 ]; then
+        log "probe to $_host: no response"
         return 1
     fi
 }
 
 rm -f "$SOCKET"
 
-socat UNIX-LISTEN:"$SOCKET",fork,mode=0600 EXEC:'pbcopy' &
+socat UNIX-LISTEN:"$SOCKET",fork,mode=0600 \
+    "EXEC:$DISPATCHER $SESSION_TOKEN $$" &
 SOCAT_PID=$!
 
-_deadline=$(( $(date +%s) + 5 ))
+_socat_wait=0
 until [ -S "$SOCKET" ]; do
     sleep 0.1
-    if [ "$(date +%s)" -ge "$_deadline" ]; then
+    _socat_wait=$((_socat_wait + 1))
+    if [ "$_socat_wait" -ge 50 ]; then
         log "socat failed to start"
         exit 1
     fi
@@ -81,15 +89,23 @@ for host in $HOSTS; do
     log "started autossh to $host (PID $pid)"
 done
 
-sleep 2
-
-for pid in $AUTOSSH_PIDS; do
-    kill -0 "$pid" 2>/dev/null || { log "autossh $pid failed to start"; exit 1; }
+log "waiting for tunnels"
+for host in $HOSTS; do
+    _startup_attempts=0
+    while ! check_tunnel "$host"; do
+        _startup_attempts=$((_startup_attempts + 1))
+        if [ "$_startup_attempts" -ge 15 ]; then
+            log "tunnel to $host failed to come up"
+            exit 1
+        fi
+        sleep 2
+    done
+    log "tunnel to $host established"
 done
 
 log "tunnels up"
 
-_last_probe=0
+_last_probe=$(date +%s)
 _probe_failures=0
 while true; do
     kill -0 "$SOCAT_PID" 2>/dev/null || { log "socat exited unexpectedly"; exit 1; }

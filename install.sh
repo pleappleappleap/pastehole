@@ -26,6 +26,7 @@ install_local() {
     echo "==> Mac side"
 
     [ -f "$SCRIPT_DIR/pbcopy-tunnel.sh" ]  || die "pbcopy-tunnel.sh not found"
+    [ -f "$SCRIPT_DIR/pbcopy-dispatch" ]   || die "pbcopy-dispatch not found"
     [ -f "$SCRIPT_DIR/$PLIST_SRC" ]        || die "$PLIST_SRC not found"
     command -v autossh >/dev/null          || die "autossh not found — brew install autossh"
     command -v socat   >/dev/null          || die "socat not found — brew install socat"
@@ -33,6 +34,8 @@ install_local() {
     mkdir -p "$HOME/Library/Logs" "$HOME/bin"
     install -m 0755 "$SCRIPT_DIR/pbcopy-tunnel.sh" "$HOME/bin/pbcopy-tunnel"
     info "installed $HOME/bin/pbcopy-tunnel"
+    install -m 0755 "$SCRIPT_DIR/pbcopy-dispatch" "$HOME/bin/pbcopy-dispatch"
+    info "installed $HOME/bin/pbcopy-dispatch"
 
     mkdir -p "$HOME/Library/LaunchAgents"
     _tmp=$(mktemp "$HOME/Library/LaunchAgents/.pbcopy-tunnel.plist.XXXXXX")
@@ -63,11 +66,9 @@ install_remote() {
     [ -f "$SCRIPT_DIR/remote/pbcopy" ] || die "remote/pbcopy not found"
     command -v ssh >/dev/null          || die "ssh not found"
 
-    ssh "$host" 'command -v socat >/dev/null' || \
-        die "socat not found on $host — install it first (see README.md Prerequisites)"
-
-    ssh "$host" 'mkdir -p ~/bin && cat > ~/bin/.pbcopy.tmp && chmod 0755 ~/bin/.pbcopy.tmp && mv ~/bin/.pbcopy.tmp ~/bin/pbcopy' \
-        < "$SCRIPT_DIR/remote/pbcopy"
+    ssh "$host" 'command -v socat >/dev/null 2>&1 && mkdir -p ~/bin && cat > ~/bin/.pbcopy.tmp && chmod 0755 ~/bin/.pbcopy.tmp && mv ~/bin/.pbcopy.tmp ~/bin/pbcopy' \
+        < "$SCRIPT_DIR/remote/pbcopy" || \
+        die "remote install failed on $host — is socat installed? (see README.md Prerequisites)"
     info "installed ~/bin/pbcopy on $host"
 
     mkdir -p "$(dirname "$HOSTS_FILE")"
