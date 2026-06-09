@@ -83,11 +83,15 @@ install_remote() {
     echo "  NOTE: for clean tunnel reconnects, add to /etc/ssh/sshd_config on $host:"
     echo "    StreamLocalBindUnlink yes"
     echo "  See README.md for details."
+    echo ""
+    echo "Done. Test: ssh $host 'echo hello | pbcopy' then pbpaste on the Mac."
 }
 
 case "${1:-}" in
     local)
         install_local
+        echo ""
+        echo "Done."
         ;;
     remote)
         install_remote "${2:-}"
@@ -102,6 +106,3 @@ case "${1:-}" in
         exit 1
         ;;
 esac
-
-echo ""
-echo "Done. Test: ssh <host> 'echo hello | pbcopy' then pbpaste on the Mac."
