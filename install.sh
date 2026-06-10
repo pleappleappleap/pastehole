@@ -12,7 +12,7 @@ PLIST_DEST="$HOME/Library/LaunchAgents/$PLIST_NAME.plist"
 HOSTS_FILE="$HOME/.config/pbcopy-tunnel/hosts"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-die()  { echo "error: $*" >&2; exit 1; }
+die()  { _c=$1; shift; echo "error: $*" >&2; exit "$_c"; }
 info() { echo "  $*"; }
 
 reload_agent() {
@@ -23,11 +23,11 @@ reload_agent() {
 install_local() {
     echo "==> Mac side"
 
-    [ -f "$SCRIPT_DIR/pbcopy-tunnel.sh" ]  || die "pbcopy-tunnel.sh not found"
-    [ -f "$SCRIPT_DIR/pbcopy-dispatch" ]   || die "pbcopy-dispatch not found"
-    [ -f "$SCRIPT_DIR/$PLIST_SRC" ]        || die "$PLIST_SRC not found"
-    command -v autossh >/dev/null          || die "autossh not found — brew install autossh"
-    command -v socat   >/dev/null          || die "socat not found — brew install socat"
+    [ -f "$SCRIPT_DIR/pbcopy-tunnel.sh" ]  || die 14 "pbcopy-tunnel.sh not found"
+    [ -f "$SCRIPT_DIR/pbcopy-dispatch" ]   || die 14 "pbcopy-dispatch not found"
+    [ -f "$SCRIPT_DIR/$PLIST_SRC" ]        || die 14 "$PLIST_SRC not found"
+    command -v autossh >/dev/null          || die 15 "autossh not found — brew install autossh"
+    command -v socat   >/dev/null          || die 15 "socat not found — brew install socat"
 
     mkdir -p "$HOME/Library/Logs" "$HOME/bin"
     install -m 0755 "$SCRIPT_DIR/pbcopy-tunnel.sh" "$HOME/bin/pbcopy-tunnel"
@@ -40,7 +40,7 @@ install_local() {
     sed -e "s|@@INSTALL_PATH@@|$HOME/bin/pbcopy-tunnel|" \
         -e "s|@@HOME@@|$HOME|g" \
         "$SCRIPT_DIR/$PLIST_SRC" > "$_tmp" && mv "$_tmp" "$PLIST_DEST" || {
-        rm -f "$_tmp"; die "failed to write plist"
+        rm -f "$_tmp"; die 16 "failed to write plist"
     }
     info "installed $PLIST_DEST"
 
@@ -57,16 +57,16 @@ install_local() {
 
 install_remote() {
     host="$1"
-    [ -n "$host" ] || die "usage: $0 remote <ssh-host-alias>"
+    [ -n "$host" ] || die 17 "usage: $0 remote <ssh-host-alias>"
 
     echo "==> Remote side ($host)"
 
-    [ -f "$SCRIPT_DIR/remote/pbcopy" ] || die "remote/pbcopy not found"
-    command -v ssh >/dev/null          || die "ssh not found"
+    [ -f "$SCRIPT_DIR/remote/pbcopy" ] || die 14 "remote/pbcopy not found"
+    command -v ssh >/dev/null          || die 15 "ssh not found"
 
     ssh "$host" 'command -v socat >/dev/null 2>&1 && command -v xxd >/dev/null 2>&1 && mkdir -p ~/bin && cat > ~/bin/.pbcopy.tmp && chmod 0755 ~/bin/.pbcopy.tmp && mv ~/bin/.pbcopy.tmp ~/bin/pbcopy' \
         < "$SCRIPT_DIR/remote/pbcopy" || \
-        die "remote install failed on $host — are socat and xxd installed? (see README.md Prerequisites)"
+        die 18 "remote install failed on $host — are socat and xxd installed? (see README.md Prerequisites)"
     info "installed ~/bin/pbcopy on $host"
 
     mkdir -p "$(dirname "$HOSTS_FILE")"
@@ -108,6 +108,6 @@ case "${1:-}" in
         ;;
     *)
         echo "usage: $0 local | remote <ssh-host> | both <ssh-host>" >&2
-        exit 1
+        exit 13
         ;;
 esac

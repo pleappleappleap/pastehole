@@ -6,7 +6,7 @@
 _limit="100m"
 if [ "${1:-}" = "-s" ]; then
     _limit=$(printf '%s' "${2:-}" | tr 'A-Z' 'a-z')
-    [ -z "$_limit" ] && { printf 'pbcopy: -s requires a size argument\n' >&2; exit 1; }
+    [ -z "$_limit" ] && { printf 'pbcopy: -s requires a size argument\n' >&2; exit 7; }
     shift 2
 fi
 
@@ -16,7 +16,7 @@ _count=$(printf '%s\n' "$_sockets" | grep -c '/tmp/')
 
 if [ "$_count" -eq 0 ]; then
     printf 'pbcopy: no tunnel socket found — is pastehole running on your Mac?\n' >&2
-    exit 1
+    exit 8
 elif [ "$_count" -eq 1 ]; then
     SOCKET="$_sockets"
 elif [ -n "${1:-}" ]; then
@@ -28,13 +28,13 @@ elif [ -n "${1:-}" ]; then
         | grep -E "/pbcopy-${_pat}(-[0-9a-f]{32}\.sock|\..*-[0-9a-f]{32}\.sock)$")
     _nmatches=$(printf '%s\n' "$_match" | grep -c '/tmp/')
     if [ "$_nmatches" -eq 0 ]; then
-        printf 'pbcopy: no tunnel socket for Mac "%s"\n' "$1" >&2; exit 1
+        printf 'pbcopy: no tunnel socket for Mac "%s"\n' "$1" >&2; exit 9
     elif [ "$_nmatches" -gt 1 ]; then
         printf 'pbcopy: "%s" is ambiguous — be more specific:\n' "$1" >&2
         printf '%s\n' "$_match" \
             | sed 's|.*/pbcopy-||; s|-[0-9a-f]*\.sock$||' \
             | while IFS= read -r _h; do printf '  pbcopy %s\n' "$_h" >&2; done
-        exit 1
+        exit 10
     fi
     SOCKET="$_match"
 else
@@ -42,8 +42,8 @@ else
     printf '%s\n' "$_sockets" \
         | sed 's|.*/pbcopy-||; s|-[0-9a-f]*\.sock$||' \
         | while IFS= read -r _h; do printf '  pbcopy %s\n' "$_h" >&2; done
-    exit 1
+    exit 11
 fi
 
-[ -S "$SOCKET" ] || { printf 'pbcopy: tunnel socket not found: %s\n' "$SOCKET" >&2; exit 1; }
+[ -S "$SOCKET" ] || { printf 'pbcopy: tunnel socket not found: %s\n' "$SOCKET" >&2; exit 12; }
 head -c "$_limit" | socat - UNIX-CONNECT:"$SOCKET"

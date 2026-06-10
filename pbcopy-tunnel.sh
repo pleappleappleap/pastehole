@@ -32,13 +32,13 @@ trap cleanup EXIT INT TERM HUP
 
 if [ ! -f "$HOSTS_FILE" ]; then
     log "hosts file not found: $HOSTS_FILE"
-    exit 1
+    exit 2
 fi
 
 HOSTS=$(sed 's/#.*//' "$HOSTS_FILE" | grep -v '^[[:space:]]*$')
 if [ -z "$HOSTS" ]; then
     log "no hosts configured in $HOSTS_FILE"
-    exit 1
+    exit 3
 fi
 
 # Send session token + host sequence byte through the tunnel.
@@ -151,7 +151,7 @@ until [ -S "$SOCKET" ]; do
     _socat_wait=$((_socat_wait + 1))
     if [ "$_socat_wait" -ge 50 ]; then
         log "socat failed to start"
-        exit 1
+        exit 4
     fi
 done
 
@@ -167,9 +167,9 @@ done
 log "monitors started"
 
 while true; do
-    kill -0 "$SOCAT_PID" 2>/dev/null || { log "socat exited unexpectedly"; exit 1; }
+    kill -0 "$SOCAT_PID" 2>/dev/null || { log "socat exited unexpectedly"; exit 5; }
     for pid in $MONITOR_PIDS; do
-        kill -0 "$pid" 2>/dev/null || { log "a host monitor exited unexpectedly"; exit 1; }
+        kill -0 "$pid" 2>/dev/null || { log "a host monitor exited unexpectedly"; exit 6; }
     done
     sleep 5
 done
