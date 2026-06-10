@@ -10,14 +10,14 @@ DISPATCHER="$HOME/bin/pbcopy-dispatch"
 PROBE_INTERVAL=60   # seconds between end-to-end tunnel probes
 PROBE_FAIL_MAX=3    # consecutive probe failures before reconnecting
 
+log() { printf 'pbcopy-tunnel: %s\n' "$*" >&2; }
+
 SESSION_TOKEN=$(openssl rand -hex 16)
 MAC_HOSTNAME=$(hostname -f)
 case "$MAC_HOSTNAME" in
     *[!a-zA-Z0-9._-]*) log "invalid hostname: $MAC_HOSTNAME"; exit 1 ;;
 esac
 SOCKET=/tmp/pbcopy-${MAC_HOSTNAME}-${SESSION_TOKEN}.sock
-
-log() { printf 'pbcopy-tunnel: %s\n' "$*" >&2; }
 
 _cleaned=0
 cleanup() {
