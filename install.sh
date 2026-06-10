@@ -1,9 +1,9 @@
 #!/bin/sh
 # Installs pastehole on the Mac and/or a remote server.
 # Usage:
-#   ./install.sh local               — Mac side only
-#   ./install.sh remote <ssh-host>   — remote side only (via ssh/scp)
-#   ./install.sh both   <ssh-host>   — both sides
+#   ./install.sh local               - Mac side only
+#   ./install.sh remote <ssh-host>   - remote side only (via ssh/scp)
+#   ./install.sh both   <ssh-host>   - both sides
 set -e
 
 PLIST_NAME=org.pastehole
@@ -26,8 +26,8 @@ install_local() {
     [ -f "$SCRIPT_DIR/pbcopy-tunnel.sh" ]  || die 14 "pbcopy-tunnel.sh not found"
     [ -f "$SCRIPT_DIR/pbcopy-dispatch" ]   || die 14 "pbcopy-dispatch not found"
     [ -f "$SCRIPT_DIR/$PLIST_SRC" ]        || die 14 "$PLIST_SRC not found"
-    command -v autossh >/dev/null          || die 15 "autossh not found — brew install autossh"
-    command -v socat   >/dev/null          || die 15 "socat not found — brew install socat"
+    command -v autossh >/dev/null          || die 15 "autossh not found (brew install autossh)"
+    command -v socat   >/dev/null          || die 15 "socat not found (brew install socat)"
 
     mkdir -p "$HOME/Library/Logs" "$HOME/bin"
     install -m 0755 "$SCRIPT_DIR/pbcopy-tunnel.sh" "$HOME/bin/pbcopy-tunnel"
@@ -66,7 +66,7 @@ install_remote() {
 
     ssh "$host" 'command -v socat >/dev/null 2>&1 && command -v xxd >/dev/null 2>&1 && mkdir -p ~/bin && cat > ~/bin/.pbcopy.tmp && chmod 0755 ~/bin/.pbcopy.tmp && mv ~/bin/.pbcopy.tmp ~/bin/pbcopy' \
         < "$SCRIPT_DIR/remote/pbcopy" || \
-        die 18 "remote install failed on $host — are socat and xxd installed? (see README.md Prerequisites)"
+        die 18 "remote install failed on $host; are socat and xxd installed? (see README.md Prerequisites)"
     info "installed ~/bin/pbcopy on $host"
 
     mkdir -p "$(dirname "$HOSTS_FILE")"
@@ -81,7 +81,7 @@ install_remote() {
         reload_agent
         info "launchd agent (re)loaded"
     else
-        info "Mac side not installed yet — run: ./install.sh local"
+        info "Mac side not installed yet; run: ./install.sh local"
     fi
 
     echo ""

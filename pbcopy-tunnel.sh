@@ -57,7 +57,7 @@ check_tunnel() {
 }
 
 # Per-host monitor: manages autossh and periodic probes for one host.
-# Reconnects automatically on tunnel failure — never exits in normal operation.
+# Reconnects automatically on tunnel failure; never exits in normal operation.
 run_host_monitor() {
     _mhost="$1"
     _mseq="$2"

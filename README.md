@@ -23,7 +23,7 @@ remote$ echo foo | pbcopy
 
 A launchd agent on the Mac keeps `socat` and one `autossh` instance per
 configured server running continuously. All SSH sessions to a given server
-share the same tunnel - it doesn't matter which session is active, or whether
+share the same tunnel. It doesn't matter which session is active, or whether
 any session is open at all when the copy happens.
 
 ## Prerequisites
@@ -105,7 +105,7 @@ Or install both sides in one shot:
    export PATH="$HOME/bin:$PATH"
    ```
 
-2. Optional but recommended - add to `/etc/ssh/sshd_config`:
+2. Optional but recommended: add to `/etc/ssh/sshd_config`:
    ```
    StreamLocalBindUnlink yes
    ```
@@ -145,7 +145,7 @@ The tunnel is down. Check the log on the Mac. Common causes:
 - The launchd agent isn't loaded: `launchctl list org.pastehole`
 - `~/.config/pbcopy-tunnel/hosts` is empty or missing
 
-**`pbcopy: multiple Macs connected - specify a hostname`**
+**`pbcopy: multiple Macs connected; specify a hostname:`**
 You have active tunnels from more than one Mac. Pass the Mac's hostname:
 `echo hello | pbcopy mymac`
 
@@ -182,4 +182,4 @@ Then wait for the tunnel to reconnect (up to ~90 seconds).
 | `pbcopy-dispatch` | `~/bin/pbcopy-dispatch` on the Mac |
 | `org.pastehole.plist` | `~/Library/LaunchAgents/org.pastehole.plist` on the Mac |
 | `remote/pbcopy` | `~/bin/pbcopy` on each remote server |
-| *(generated)* | `~/.config/pbcopy-tunnel/hosts` - one SSH host alias per line |
+| *(generated)* | `~/.config/pbcopy-tunnel/hosts` (one SSH host alias per line) |

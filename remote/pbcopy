@@ -15,7 +15,7 @@ _sockets=$(find /tmp -maxdepth 1 -name 'pbcopy-*.sock' -user "$_me" 2>/dev/null)
 _count=$(printf '%s\n' "$_sockets" | grep -c '/tmp/')
 
 if [ "$_count" -eq 0 ]; then
-    printf 'pbcopy: no tunnel socket found — is pastehole running on your Mac?\n' >&2
+    printf 'pbcopy: no tunnel socket found; is pastehole running on your Mac?\n' >&2
     exit 8
 elif [ "$_count" -eq 1 ]; then
     SOCKET="$_sockets"
@@ -30,7 +30,7 @@ elif [ -n "${1:-}" ]; then
     if [ "$_nmatches" -eq 0 ]; then
         printf 'pbcopy: no tunnel socket for Mac "%s"\n' "$1" >&2; exit 9
     elif [ "$_nmatches" -gt 1 ]; then
-        printf 'pbcopy: "%s" is ambiguous — be more specific:\n' "$1" >&2
+        printf 'pbcopy: "%s" is ambiguous; be more specific:\n' "$1" >&2
         printf '%s\n' "$_match" \
             | sed 's|.*/pbcopy-||; s|-[0-9a-f]*\.sock$||' \
             | while IFS= read -r _h; do printf '  pbcopy %s\n' "$_h" >&2; done
@@ -38,7 +38,7 @@ elif [ -n "${1:-}" ]; then
     fi
     SOCKET="$_match"
 else
-    printf 'pbcopy: multiple Macs connected — specify a hostname:\n' >&2
+    printf 'pbcopy: multiple Macs connected; specify a hostname:\n' >&2
     printf '%s\n' "$_sockets" \
         | sed 's|.*/pbcopy-||; s|-[0-9a-f]*\.sock$||' \
         | while IFS= read -r _h; do printf '  pbcopy %s\n' "$_h" >&2; done
