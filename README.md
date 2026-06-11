@@ -139,6 +139,11 @@ tail -f ~/Library/Logs/pbcopy-tunnel.log
 
 ## Troubleshooting
 
+**Clipboard is truncated**
+The Mac-side dispatcher caps incoming payloads at 10% of physical RAM (1 GiB
+maximum). Payloads beyond the cap are silently truncated. Use `pbcopy -s SIZE`
+on the remote to apply a different limit before sending (e.g. `pbcopy -s 200m`).
+
 **`pbcopy: no tunnel socket found`**
 The tunnel is down. Check the log on the Mac. Common causes:
 - autossh can't reach the remote server (network/key issue)

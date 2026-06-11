@@ -10,6 +10,12 @@ DISPATCHER="$HOME/bin/pbcopy-dispatch"
 PROBE_INTERVAL=60   # seconds between end-to-end tunnel probes
 PROBE_FAIL_MAX=3    # consecutive probe failures before reconnecting
 
+CAP_PCT=10
+CAP_CEILING=1073741824   # 1 GiB hard ceiling
+_mem=$(sysctl -n hw.memsize)
+CAP_BYTES=$((_mem * CAP_PCT / 100))
+[ "$CAP_BYTES" -gt "$CAP_CEILING" ] && CAP_BYTES=$CAP_CEILING
+
 log() { printf 'pbcopy-tunnel: %s\n' "$*" >&2; }
 
 SESSION_TOKEN=$(openssl rand -hex 16)
@@ -156,8 +162,8 @@ run_host_monitor() {
 
 rm -f "$LOCAL_SOCKET"
 
-socat UNIX-LISTEN:"$LOCAL_SOCKET",fork,mode=0600 \
-    "EXEC:$DISPATCHER $SESSION_TOKEN" &
+socat UNIX-LISTEN:"$LOCAL_SOCKET",fork,mode=0600,max-children=10 \
+    "EXEC:$DISPATCHER $SESSION_TOKEN $CAP_BYTES" &
 SOCAT_PID=$!
 
 _socat_wait=0

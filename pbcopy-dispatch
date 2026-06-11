@@ -2,12 +2,17 @@
 # Mac-side tunnel dispatcher. Invoked by socat for each incoming connection.
 # Reads 17 bytes: 16-byte session token + 1-byte host sequence number.
 # Probe: echoes the sequence byte back as ACK; real data passes through to pbcopy.
+# SESSION_TOKEN is an identifier/discriminator, not a credential; it appears in
+# the socket filename and in argv (visible via ps). Do not treat it as a secret.
 SESSION_TOKEN="$1"   # 16 random bytes as 32 hex chars
+# Payloads beyond CAP_BYTES are silently truncated; spooling to disk first would
+# be a worse privacy trade-off for this tool.
+CAP_BYTES="${2:-1073741824}"
 
 prefix=$(dd bs=1 count=17 2>/dev/null | xxd -p | tr -d '\n')
 token="${prefix%??}"
 if [ "$token" = "$SESSION_TOKEN" ]; then
     printf '%s' "${prefix#"$SESSION_TOKEN"}" | xxd -r -p
 else
-    { printf '%s' "$prefix" | xxd -r -p; cat; } | pbcopy
+    { printf '%s' "$prefix" | xxd -r -p; cat; } | head -c "$CAP_BYTES" | pbcopy
 fi
