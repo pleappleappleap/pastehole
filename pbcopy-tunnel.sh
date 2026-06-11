@@ -13,11 +13,16 @@ PROBE_FAIL_MAX=3    # consecutive probe failures before reconnecting
 
 CAP_PCT=10
 CAP_CEILING=1073741824   # 1 GiB hard ceiling
-_mem=$(sysctl -n hw.memsize)
-CAP_BYTES=$((_mem * CAP_PCT / 100))
-[ "$CAP_BYTES" -gt "$CAP_CEILING" ] && CAP_BYTES=$CAP_CEILING
+_mem=$(sysctl -n hw.memsize 2>/dev/null)
+if [ -n "$_mem" ]; then
+    CAP_BYTES=$((_mem * CAP_PCT / 100))
+    [ "$CAP_BYTES" -gt "$CAP_CEILING" ] && CAP_BYTES=$CAP_CEILING
+else
+    CAP_BYTES=$CAP_CEILING
+fi
 
 log() { printf 'pbcopy-tunnel: %s\n' "$*" >&2; }
+ctl_path() { printf '%s/pbcopy-ctl-%s' "${RUNTIME_DIR%/}" "$1"; }
 
 # SESSION_TOKEN is a probe/route discriminator, not a credential. It appears in
 # the socket filename and in socat/dispatcher argv (visible via ps to local users).
@@ -69,7 +74,7 @@ check_tunnel() {
     _seq="$2"
     _probe_hex=$(printf '%s%02x' "$SESSION_TOKEN" "$_seq")
     _ack=$(ssh -o BatchMode=yes -o ConnectTimeout=5 \
-        -o "ControlMaster=no" -o "ControlPath=${RUNTIME_DIR%/}/pbcopy-ctl-${_host}" \
+        -o "ControlMaster=no" -o "ControlPath=$(ctl_path "$_host")" \
         -- "$_host" \
         "printf '%s' '$_probe_hex' | xxd -r -p | socat - UNIX-CONNECT:'$REMOTE_SOCKET'" 2>/dev/null \
         | head -c 1 | xxd -p | tr -d '\n')
@@ -82,7 +87,7 @@ run_host_monitor() {
     _mhost="$1"
     _mseq="$2"
     _mautossh_pid=""
-    _mctl="${RUNTIME_DIR%/}/pbcopy-ctl-${_mhost}"
+    _mctl=$(ctl_path "$_mhost")
     trap 'kill "$_mautossh_pid" 2>/dev/null; rm -f "$_mctl"' EXIT
     trap 'kill "$_mautossh_pid" 2>/dev/null; rm -f "$_mctl"; exit 0' INT TERM HUP
 
