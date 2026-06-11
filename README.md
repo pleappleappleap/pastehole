@@ -141,8 +141,9 @@ tail -f ~/Library/Logs/pbcopy-tunnel.log
 
 **Clipboard is truncated**
 The Mac-side dispatcher caps incoming payloads at 10% of physical RAM (1 GiB
-maximum). Payloads beyond the cap are silently truncated. Use `pbcopy -s SIZE`
-on the remote to apply a different limit before sending (e.g. `pbcopy -s 200m`).
+maximum); payloads beyond the cap are silently truncated, and this limit cannot
+be raised from the remote. To truncate client-side at a known boundary below
+the cap, use `pbcopy -s SIZE` (e.g. `pbcopy -s 200m`).
 
 **`pbcopy: no tunnel socket found`**
 The tunnel is down. Check the log on the Mac. Common causes:
@@ -179,9 +180,10 @@ If your Mac's FQDN changes between runs (e.g. a VPN that alters the domain
 suffix), the old socket may linger in `/tmp` on the remote and trigger the
 "multiple Macs connected" error even though only one Mac is active. Fix:
 ```sh
-rm /tmp/pbcopy-$(id -un)@*.sock
+rm /tmp/pbcopy-*.sock
 ```
-Then wait for the tunnel to reconnect (up to ~90 seconds).
+The broad glob is safe: `/tmp`'s sticky bit restricts deletion to your own
+files. Then wait for the tunnel to reconnect (up to ~90 seconds).
 
 **Fast user switching**
 macOS fast user switching is supported: each Mac user runs their own agent
