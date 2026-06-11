@@ -5,8 +5,10 @@
 
 _limit="100m"
 if [ "${1:-}" = "-s" ]; then
-    _limit=$(printf '%s' "${2:-}" | tr 'A-Z' 'a-z')
+    _limit=$(printf '%s' "${2:-}" | tr '[:upper:]' '[:lower:]')
     [ -z "$_limit" ] && { printf 'pbcopy: -s requires a size argument\n' >&2; exit 7; }
+    printf '%s' "$_limit" | grep -qE '^[0-9]+[kmg]?$' || {
+        printf 'pbcopy: invalid size: %s\n' "$_limit" >&2; exit 20; }
     shift 2
 fi
 

@@ -4,6 +4,7 @@
 
 PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin
 export PATH
+umask 077
 
 HOSTS_FILE="$HOME/.config/pbcopy-tunnel/hosts"
 DISPATCHER="$HOME/bin/pbcopy-dispatch"
@@ -68,7 +69,7 @@ check_tunnel() {
     log "[$_host] probing"
     _ack=$(ssh -o BatchMode=yes -o ConnectTimeout=5 \
         -o "ControlMaster=no" -o "ControlPath=${RUNTIME_DIR%/}/pbcopy-ctl-${_host}" \
-        "$_host" \
+        -- "$_host" \
         "printf '%s' '$_probe_hex' | xxd -r -p | socat - UNIX-CONNECT:'$REMOTE_SOCKET'" 2>/dev/null \
         | head -c 1 | xxd -p | tr -d '\n')
     [ "$_ack" = "$(printf '%02x' "$_seq")" ]
@@ -105,7 +106,7 @@ run_host_monitor() {
             -o "ControlMaster=yes" \
             -o "ControlPath=${_mctl}" \
             -R "$REMOTE_SOCKET:$LOCAL_SOCKET" \
-            "$_mhost" &
+            -- "$_mhost" &
         _mautossh_pid=$!
         log "[$_mhost] started autossh (PID $_mautossh_pid)"
 
