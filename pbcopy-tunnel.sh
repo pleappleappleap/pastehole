@@ -13,11 +13,23 @@ PROBE_FAIL_MAX=3    # consecutive probe failures before reconnecting
 log() { printf 'pbcopy-tunnel: %s\n' "$*" >&2; }
 
 SESSION_TOKEN=$(openssl rand -hex 16)
+MAC_USER=$(id -un)
+case "$MAC_USER" in
+    *[!a-zA-Z0-9._-]*) log "invalid username: $MAC_USER"; exit 19 ;;
+esac
 MAC_HOSTNAME=$(hostname -f)
 case "$MAC_HOSTNAME" in
     *[!a-zA-Z0-9._-]*) log "invalid hostname: $MAC_HOSTNAME"; exit 1 ;;
 esac
-SOCKET=/tmp/pbcopy-${MAC_HOSTNAME}-${SESSION_TOKEN}.sock
+RUNTIME_DIR=$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null)
+[ -d "$RUNTIME_DIR" ] || RUNTIME_DIR=${TMPDIR:-/tmp}
+SOCK_NAME="pbcopy-${MAC_USER}@${MAC_HOSTNAME}-${SESSION_TOKEN}.sock"
+REMOTE_SOCKET="/tmp/${SOCK_NAME}"
+LOCAL_SOCKET="${RUNTIME_DIR%/}/${SOCK_NAME}"
+if [ "${#LOCAL_SOCKET}" -gt 100 ]; then
+    log "socket path too long, using /tmp for local bind"
+    LOCAL_SOCKET="/tmp/${SOCK_NAME}"
+fi
 
 _cleaned=0
 cleanup() {
@@ -26,7 +38,7 @@ cleanup() {
     log "shutting down"
     for pid in $MONITOR_PIDS; do kill "$pid" 2>/dev/null; done
     kill "$SOCAT_PID" 2>/dev/null
-    rm -f "$SOCKET"
+    rm -f "$LOCAL_SOCKET"
 }
 trap cleanup EXIT INT TERM HUP
 
@@ -51,7 +63,7 @@ check_tunnel() {
     _ack=$(ssh -o BatchMode=yes -o ConnectTimeout=5 \
         -o "ControlMaster=no" -o "ControlPath=/tmp/pbcopy-ctl-${_host}" \
         "$_host" \
-        "printf '%s' '$_probe_hex' | xxd -r -p | socat - UNIX-CONNECT:'$SOCKET'" 2>/dev/null \
+        "printf '%s' '$_probe_hex' | xxd -r -p | socat - UNIX-CONNECT:'$REMOTE_SOCKET'" 2>/dev/null \
         | head -c 1 | xxd -p | tr -d '\n')
     [ "$_ack" = "$(printf '%02x' "$_seq")" ]
 }
@@ -68,7 +80,10 @@ run_host_monitor() {
 
     while true; do
         rm -f "$_mctl"
-        ssh -o BatchMode=yes "$_mhost" "find /tmp -maxdepth 1 -name 'pbcopy-${MAC_HOSTNAME}-*.sock' -delete 2>/dev/null; true" 2>/dev/null || true
+        # Transitional glob reaps old-format sockets from pre-upgrade installs; remove in a future release.
+        ssh -o BatchMode=yes -- "$_mhost" "find /tmp -maxdepth 1 \
+            \( -name 'pbcopy-${MAC_USER}@${MAC_HOSTNAME}-*.sock' \
+               -o -name 'pbcopy-${MAC_HOSTNAME}-*.sock' \) -delete 2>/dev/null; true" 2>/dev/null || true
 
         # Race: SIGTERM between the & and $! assignment below orphans autossh.
         # Window is one interpreter step wide; autossh self-terminates when its
@@ -83,7 +98,7 @@ run_host_monitor() {
             -o "StreamLocalBindMask=0177" \
             -o "ControlMaster=yes" \
             -o "ControlPath=${_mctl}" \
-            -R "$SOCKET:$SOCKET" \
+            -R "$REMOTE_SOCKET:$LOCAL_SOCKET" \
             "$_mhost" &
         _mautossh_pid=$!
         log "[$_mhost] started autossh (PID $_mautossh_pid)"
@@ -139,14 +154,14 @@ run_host_monitor() {
     done
 }
 
-rm -f "$SOCKET"
+rm -f "$LOCAL_SOCKET"
 
-socat UNIX-LISTEN:"$SOCKET",fork,mode=0600 \
+socat UNIX-LISTEN:"$LOCAL_SOCKET",fork,mode=0600 \
     "EXEC:$DISPATCHER $SESSION_TOKEN" &
 SOCAT_PID=$!
 
 _socat_wait=0
-until [ -S "$SOCKET" ]; do
+until [ -S "$LOCAL_SOCKET" ]; do
     sleep 0.1
     _socat_wait=$((_socat_wait + 1))
     if [ "$_socat_wait" -ge 50 ]; then

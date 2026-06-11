@@ -146,14 +146,18 @@ The tunnel is down. Check the log on the Mac. Common causes:
 - `~/.config/pbcopy-tunnel/hosts` is empty or missing
 
 **`pbcopy: multiple Macs connected; specify a hostname:`**
-You have active tunnels from more than one Mac. Pass the Mac's hostname:
-`echo hello | pbcopy mymac`
+You have active tunnels from more than one Mac. Pass the Mac's `user@hostname`
+(shown in the disambiguation list) or just the hostname if it is unambiguous:
+```sh
+echo hello | pbcopy user@mymac
+echo hello | pbcopy mymac
+```
 
 **Clipboard gets nothing / pbcopy silently fails**
 - Confirm socat is running on the Mac: `pgrep -a socat`
 - Confirm a socket exists on the remote: `ssh <host> 'ls /tmp/pbcopy-*.sock'`
 - Test the socket directly from the Mac:
-  `echo test | socat - UNIX-CONNECT:/tmp/pbcopy-$(hostname -f)-*.sock`
+  `echo test | socat - UNIX-CONNECT:"$(ls "$(getconf DARWIN_USER_TEMP_DIR)"pbcopy-*.sock 2>/dev/null | head -1)"`
 
 **Tunnel broken after wake from sleep**
 autossh will reconnect automatically within ~90 seconds
@@ -170,9 +174,25 @@ If your Mac's FQDN changes between runs (e.g. a VPN that alters the domain
 suffix), the old socket may linger in `/tmp` on the remote and trigger the
 "multiple Macs connected" error even though only one Mac is active. Fix:
 ```sh
-rm /tmp/pbcopy-*.sock
+rm /tmp/pbcopy-$(id -un)@*.sock
 ```
 Then wait for the tunnel to reconnect (up to ~90 seconds).
+
+**Fast user switching**
+macOS fast user switching is supported: each Mac user runs their own agent
+and gets a separate socket, named `pbcopy-user@hostname-token.sock`. Both
+users can tunnel into the same remote account simultaneously without
+interfering with each other. Note that the agent requires a console (GUI)
+login session; SSH-only logins to the Mac are not supported (no `gui/<uid>`
+launchd domain, no pasteboard server).
+
+**Upgrading from an earlier version**
+Sockets were previously named `pbcopy-hostname-token.sock` (no user prefix).
+After upgrading, old-format sockets on remotes will be cleaned up automatically
+on the next reconnect. You can also clean them up manually:
+```sh
+rm /tmp/pbcopy-*.sock
+```
 
 ## Files
 

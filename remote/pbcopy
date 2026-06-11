@@ -1,7 +1,7 @@
 #!/bin/sh
 # Drop-in pbcopy replacement for the remote server. Writes stdin to the
 # reverse tunnel socket forwarded back to the Mac clipboard.
-# Usage: pbcopy [-s SIZE] [mac-hostname]
+# Usage: pbcopy [-s SIZE] [user@hostname | hostname]
 
 _limit="100m"
 if [ "${1:-}" = "-s" ]; then
@@ -20,12 +20,21 @@ if [ "$_count" -eq 0 ]; then
 elif [ "$_count" -eq 1 ]; then
     SOCKET="$_sockets"
 elif [ -n "${1:-}" ]; then
-    # Escape dots in the given name, then match either:
-    #   exact hostname:  pbcopy-NAME-HEXTOKEN.sock
-    #   leftmost label:  pbcopy-NAME.domain-HEXTOKEN.sock
-    _pat=$(printf '%s' "$1" | sed 's/\./\\./g')
-    _match=$(printf '%s\n' "$_sockets" \
-        | grep -E "/pbcopy-${_pat}(-[0-9a-f]{32}\.sock|\..*-[0-9a-f]{32}\.sock)$")
+    # Accept user@host or bare host. Dots escaped for regex. Match either:
+    #   new format: pbcopy-USER@HOST-HEXTOKEN.sock  (or HOST as leftmost FQDN label)
+    #   old format: pbcopy-HOST-HEXTOKEN.sock (bare host makes user field optional)
+    case "$1" in
+        *@*) _user="${1%%@*}"; _hostarg="${1#*@}" ;;
+        *)   _user="";          _hostarg="$1" ;;
+    esac
+    _upat=$(printf '%s' "$_user"    | sed 's/\./\\./g')
+    _hpat=$(printf '%s' "$_hostarg" | sed 's/\./\\./g')
+    if [ -n "$_user" ]; then
+        _re="/pbcopy-${_upat}@${_hpat}(-[0-9a-f]{32}\.sock|\..*-[0-9a-f]{32}\.sock)$"
+    else
+        _re="/pbcopy-([^/@]*@)?${_hpat}(-[0-9a-f]{32}\.sock|\..*-[0-9a-f]{32}\.sock)$"
+    fi
+    _match=$(printf '%s\n' "$_sockets" | grep -E "$_re")
     _nmatches=$(printf '%s\n' "$_match" | grep -c '/tmp/')
     if [ "$_nmatches" -eq 0 ]; then
         printf 'pbcopy: no tunnel socket for Mac "%s"\n' "$1" >&2; exit 9
