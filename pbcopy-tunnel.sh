@@ -19,6 +19,8 @@ CAP_BYTES=$((_mem * CAP_PCT / 100))
 
 log() { printf 'pbcopy-tunnel: %s\n' "$*" >&2; }
 
+# SESSION_TOKEN is a probe/route discriminator, not a credential. It appears in
+# the socket filename and in socat/dispatcher argv (visible via ps to local users).
 SESSION_TOKEN=$(openssl rand -hex 16)
 MAC_USER=$(id -un)
 case "$MAC_USER" in
@@ -66,7 +68,6 @@ check_tunnel() {
     _host="$1"
     _seq="$2"
     _probe_hex=$(printf '%s%02x' "$SESSION_TOKEN" "$_seq")
-    log "[$_host] probing"
     _ack=$(ssh -o BatchMode=yes -o ConnectTimeout=5 \
         -o "ControlMaster=no" -o "ControlPath=${RUNTIME_DIR%/}/pbcopy-ctl-${_host}" \
         -- "$_host" \
