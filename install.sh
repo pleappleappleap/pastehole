@@ -93,6 +93,10 @@ install_remote() {
 }
 
 case "${1:-}" in
+    -h|--help)
+        echo "usage: $0 local | remote <ssh-host> | both <ssh-host>"
+        exit 0
+        ;;
     local)
         install_local
         echo ""

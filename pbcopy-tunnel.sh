@@ -6,6 +6,12 @@ PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export PATH
 umask 077
 
+case "${1:-}" in
+    -h|--help)
+        printf 'usage: pbcopy-tunnel\n\nDaemon that maintains reverse SSH clipboard tunnels to remote servers.\nNormally run automatically via launchd (org.pastehole); do not invoke directly.\nConfigure servers in ~/.config/pbcopy-tunnel/hosts.\n'
+        exit 0 ;;
+esac
+
 HOSTS_FILE="$HOME/.config/pbcopy-tunnel/hosts"
 DISPATCHER="$HOME/bin/pbcopy-dispatch"
 PROBE_INTERVAL=60   # seconds between end-to-end tunnel probes

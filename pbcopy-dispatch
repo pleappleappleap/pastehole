@@ -4,6 +4,12 @@
 # Probe: echoes the sequence byte back as ACK; real data passes through to pbcopy.
 # SESSION_TOKEN is an identifier/discriminator, not a credential; it appears in
 # the socket filename and in argv (visible via ps). Do not treat it as a secret.
+case "${1:-}" in
+    -h|--help)
+        printf 'pbcopy-dispatch: internal dispatcher invoked by socat; not meant to be run directly.\nTo set up clipboard tunneling, run pbcopy-tunnel or see: pbcopy-tunnel --help\n'
+        exit 0 ;;
+esac
+
 SESSION_TOKEN="$1"   # 16 random bytes as 32 hex chars
 # Payloads beyond CAP_BYTES are silently truncated; spooling to disk first would
 # be a worse privacy trade-off for this tool.

@@ -3,6 +3,12 @@
 # reverse tunnel socket forwarded back to the Mac clipboard.
 # Usage: pbcopy [-s SIZE] [user@hostname | hostname]
 
+case "${1:-}" in
+    -h|--help)
+        printf 'usage: pbcopy [-s SIZE] [user@hostname | hostname]\n\nPipe stdin to the macOS clipboard via a pastehole reverse tunnel.\n\n  -s SIZE   truncate input to SIZE before sending (e.g. 100m, 2g)\n  hostname  target Mac hostname when multiple Macs are connected\n'
+        exit 0 ;;
+esac
+
 _limit="100m"
 if [ "${1:-}" = "-s" ]; then
     _limit=$(printf '%s' "${2:-}" | tr '[:upper:]' '[:lower:]')
