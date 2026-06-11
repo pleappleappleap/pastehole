@@ -2,7 +2,7 @@
 # Runs on the Mac under launchd. Starts a dispatcher on $SOCKET and one
 # autossh reverse tunnel per server listed in $HOSTS_FILE.
 
-PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin
+PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export PATH
 umask 077
 
