@@ -199,6 +199,42 @@ on the next reconnect. You can also clean them up manually:
 rm /tmp/pbcopy-*.sock
 ```
 
+## Security
+
+**Threat model**
+
+The trust boundary is the Unix socket on the Mac. Any process running as your
+Mac user account can write to your clipboard at any time with no indication.
+More critically: root, or any process running as your account, on **any
+connected remote server** can write your Mac clipboard at any time, silently.
+Connect only servers you trust to that degree.
+
+The realistic attack is clipboard-paste injection. Content pasted into a
+terminal can execute commands, especially if the payload ends with a newline
+and bracketed paste is not enabled. Treat content that arrived via `pbcopy`
+from a remote server with the same skepticism you would apply to any remote
+input.
+
+**Data flow**
+
+Data is strictly one-way: remote to Mac clipboard. Remotes can never read
+the Mac clipboard through this tool.
+
+**Transport and socket security**
+
+- Traffic rides SSH; the reverse tunnel is encrypted end to end.
+- The tunnel socket on the remote is mode 0600, owned by your remote user.
+- The listener socket on the Mac is in your per-user temp directory (mode
+  0700), mode 0600.
+- The session token embedded in socket filenames is a route discriminator,
+  not a credential. It appears in `ps` output and in filenames readable by
+  any local user. Do not treat it as a secret.
+
+**Size cap**
+
+Incoming payloads are capped at 10% of physical RAM (1 GiB maximum) by the
+Mac-side dispatcher. Payloads above the cap are silently truncated.
+
 ## Files
 
 | File | Destination |
