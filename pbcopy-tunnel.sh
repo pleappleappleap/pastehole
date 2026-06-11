@@ -67,7 +67,7 @@ check_tunnel() {
     _probe_hex=$(printf '%s%02x' "$SESSION_TOKEN" "$_seq")
     log "[$_host] probing"
     _ack=$(ssh -o BatchMode=yes -o ConnectTimeout=5 \
-        -o "ControlMaster=no" -o "ControlPath=/tmp/pbcopy-ctl-${_host}" \
+        -o "ControlMaster=no" -o "ControlPath=${RUNTIME_DIR%/}/pbcopy-ctl-${_host}" \
         "$_host" \
         "printf '%s' '$_probe_hex' | xxd -r -p | socat - UNIX-CONNECT:'$REMOTE_SOCKET'" 2>/dev/null \
         | head -c 1 | xxd -p | tr -d '\n')
@@ -80,7 +80,7 @@ run_host_monitor() {
     _mhost="$1"
     _mseq="$2"
     _mautossh_pid=""
-    _mctl="/tmp/pbcopy-ctl-${_mhost}"
+    _mctl="${RUNTIME_DIR%/}/pbcopy-ctl-${_mhost}"
     trap 'kill "$_mautossh_pid" 2>/dev/null; rm -f "$_mctl"' EXIT
     trap 'kill "$_mautossh_pid" 2>/dev/null; rm -f "$_mctl"; exit 0' INT TERM HUP
 
